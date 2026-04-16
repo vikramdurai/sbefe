@@ -6,14 +6,15 @@ import { GameStateProvider, useGameState } from '../state/GameStateContext';
 import StagingWindow from '../components/StagingWindow';
 import PesterlogChat from '../components/PesterlogChat';
 import BroadcastOverlay from '../components/BroadcastOverlay';
-import HealthBar from '../components/HealthBar';
-import ExperienceBar from '../components/ExperienceBar';
-import GristDisplay from '../components/GristDisplay';
-import EquipmentPanel from '../components/EquipmentPanel';
-import InventoryGrid from '../components/InventoryGrid';
-import CombatHUD from '../components/CombatHUD';
-import ActionButtons from '../components/ActionButtons';
-import AlchemyPanel from '../components/AlchemyPanel';
+// Disabled HUD components
+// import HealthBar from '../components/HealthBar';
+// import ExperienceBar from '../components/ExperienceBar';
+// import GristDisplay from '../components/GristDisplay';
+// import EquipmentPanel from '../components/EquipmentPanel';
+// import InventoryGrid from '../components/InventoryGrid';
+// import CombatHUD from '../components/CombatHUD';
+// import ActionButtons from '../components/ActionButtons';
+// import AlchemyPanel from '../components/AlchemyPanel';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 const STORAGE_KEY = (code) => `sburb_session_${code}`;
@@ -430,7 +431,8 @@ function GameRoomContent() {
     <div className={`game-room ${showPesterlog ? 'pesterlog-open' : ''}`}>
       <BroadcastOverlay broadcasts={broadcasts} onDismiss={dismissBroadcast} />
 
-      <div className="game-hud-layer">
+      {/* HUD layer disabled for clean main branch */}
+      {/* <div className="game-hud-layer">
         <div className="hud-top-left">
           <HealthBar
             current={gameState.player.hp.current}
@@ -456,9 +458,10 @@ function GameRoomContent() {
             onToggleInventory={() => setShowInventory((v) => !v)}
           />
         </div>
-      </div>
+      </div> */}
 
-      <InventoryGrid
+      {/* Inventory and Alchemy panels disabled for clean main branch */}
+      {/* <InventoryGrid
         visible={showInventory}
         items={gameState.player.inventory.items}
         fetchModus={gameState.player.inventory.fetchModus}
@@ -484,7 +487,7 @@ function GameRoomContent() {
             },
           });
         }}
-      />
+      /> */}
 
       {/* ── Top bar ── */}
       <div className="game-topbar">
@@ -588,7 +591,8 @@ function GameRoomContent() {
             <StagingWindow drafts={otherDrafts} players={connectedPlayers} />
           )}
 
-          <CombatHUD
+          {/* Combat HUD and Action Buttons disabled for clean main branch */}
+          {/* <CombatHUD
             inCombat={gameState.player.inCombat}
             enemies={gameState.combat.enemies}
             turnState={gameState.combat.turnState}
@@ -596,7 +600,7 @@ function GameRoomContent() {
             onActionClick={handleCombatAction}
           />
 
-          <ActionButtons actions={actionButtons} onActionSelect={handleContextAction} />
+          <ActionButtons actions={actionButtons} onActionSelect={handleContextAction} /> */}
 
           {/* Action input */}
           <div className="action-input-bar">
