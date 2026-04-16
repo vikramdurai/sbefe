@@ -1,11 +1,12 @@
-# Player - Inventory
+# $name - Inventory
 
 ## Sylladex
 - **Fetch Modus:** Stack
-- **Capacity:** 1/5 items
+- **Capacity:** 0/5 items
 
 ## Strife Deck
-- **Equipped:** Claw Hammer (Hammerkind)
+- **Specibus:** $specibus
+- **Equipped:** $weapon
 
 ## Captchalogue Cards
 - None
@@ -13,5 +14,8 @@
 ## Grist Cache
 - **Build Grist:** 0
 
+## Alchemized Items
+- None yet
+
 ## Last Updated
-2026-02-15 20:09:45.751228
+$date

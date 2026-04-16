@@ -1,7 +1,11 @@
 import os
 import datetime
+import string
 
 class StateManager:
+    # Absolute path to the directory containing state_manager.py (project root)
+    _PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
+
     def __init__(self, base_dir="."):
         self.base_dir = base_dir
         self.dirs = [
@@ -31,6 +35,14 @@ class StateManager:
             return None
         with open(full_path, "r") as f:
             return f.read()
+
+    def read_template(self, path):
+        """Read a file relative to the project root (not the per-session base_dir)."""
+        full_path = os.path.join(self._PROJECT_ROOT, path)
+        if not os.path.exists(full_path):
+            return None
+        with open(full_path, "r") as f:
+            return f.read()
     
     def list_files(self, subdir):
         path = os.path.join(self.base_dir, subdir)
@@ -38,77 +50,116 @@ class StateManager:
             return []
         return os.listdir(path)
 
-    def initialize_game(self, player_name="Player"):
+    def initialize_game(self, players):
         """Create minimal initial files if they don't exist"""
         if self.read_file("session/session_overview.md"):
             return # Already initialized
 
-        # Basic Templates (Simplified for prototype, real ones should parse the MD)
-        
+        sheet_template = string.Template(self.read_template("templates/character_sheet.md") or "")
+
         # Session Overview
-        self.write_file("session/session_overview.md", f"""# Session Overview
+        session_overview = f"""# Session Overview
 ## Session Info
 - **Session Type:** Normal
 - **Start Date:** {datetime.date.today()}
 - **Current Day:** 1
 
-## Players
-1. **{player_name}** - Heir of Breath (Default) - LOWAS
+## Players\n"""
+        
+        session_timeline = f"""# Session Timeline
+## Current Session Day: 1
+### Day 1, Entry 1 - {datetime.datetime.now()}
+**Players:** {', '.join(player.name for player in players)}
+**Event:** Session started. Players have entered the Medium.
+**Result:** {', '.join(player.land for player in players)} created.
+
+## Last Updated
+{datetime.datetime.now()}"""
+        
+        for i, player in enumerate(players):
+            session_overview += f"""{i+1}. **{player.name}** - {player.title} - {player.land}
    - Status: Active
-   - Current Level: 1
+   - Current Level: 1\n"""
 
-## Last Updated
-{datetime.datetime.now()}
-""")
+            # Build narrative sections from character_data if available
+            cd = player.character_data or {}
 
-        # Determine Filename
-        p_file = player_name.lower().replace(" ", "_")
+            def _section(data, *keys):
+                parts = [data.get(k, '').strip() for k in keys if data.get(k, '').strip()]
+                return '\n'.join(parts) if parts else 'Not yet revealed.'
 
-        # Characters
-        self.write_file(f"characters/{p_file}_sheet.md", f"""# {player_name} - Character Sheet
+            personality_text = _section(
+                cd.get('personality', {}),
+                'description', 'biggest_flaw', 'greatest_strength',
+                'conflict_handling', 'relationships'
+            )
+            backstory_text = _section(
+                cd.get('backstory', {}),
+                'life_story', 'defining_event', 'guardian_relationship', 'deepest_want'
+            )
+            interests_text = _section(
+                cd.get('interests', {}),
+                'time_spent', 'obsessions', 'collections', 'media', 'creations'
+            )
+            hidden_text = _section(
+                cd.get('hidden_questions', {}),
+                'sacrifice', 'expertise', 'reliance',
+                'time_perception', 'hidden_depths', 'problem_response'
+            )
 
-## Core Identity
-- **Class:** Heir
-- **Aspect:** Breath
-- **Title:** Heir of Breath
-- **Land:** Land of Wind and Shade (LOWAS)
-- **Denizen:** Typheus
+            session_prefs = cd.get('session', {})
+            content_flags = session_prefs.get('content_flags', '').strip()
+            content_flags_line = f"- **Content to Avoid:** {content_flags}" if content_flags else ''
+            identity = cd.get('identity', {})
+            generated = cd.get('generated', {})
 
-## Stats
-- **Current Level:** 1
-- **Current Rung:** Lint-Licker
-- **XP:** 0/100
-- **HP:** 10/10
-- **Aspect Power:** 5/5
+            mapping = {
+                'name':              player.name,
+                'cls':               player.player_class,
+                'aspect':            player.aspect,
+                'title':             player.title,
+                'land':              player.land,
+                'land_full':         generated.get('land_full', player.land),
+                'lunar_sway':        generated.get('lunar_sway', 'Unknown'),
+                'denizen':           player.denizen,
+                'species':           identity.get('species', 'Human'),
+                'age':               str(identity.get('age', 15)),
+                'pronouns':          identity.get('pronouns', 'they/them'),
+                'appearance':        identity.get('appearance', 'Not described.'),
+                'echeladder':        player.echeladder_rung,
+                'specibus':          player.strife_specibus,
+                'weapon':            player.current_weapon,
+                'sprite':            player.sprite,
+                'personality':       personality_text,
+                'backstory':         backstory_text,
+                'interests':         interests_text,
+                'hidden':            hidden_text,
+                'experience_type':   session_prefs.get('experience_type', 'Balanced'),
+                'permadeath':        session_prefs.get('permadeath', 'Embrace it'),
+                'content_flags_line': content_flags_line,
+                'date':              str(datetime.datetime.now()),
+            }
 
-## Location & Status
-- **Current Location:** Player's House (Earth)
-- **Current Activity:** Just started the game
-- **Status Effects:** None
+            p_file = player.name.lower().replace(" ", "_")
+            self.write_file(
+                f"characters/{p_file}_sheet.md",
+                sheet_template.safe_substitute(mapping)
+            )
 
-## Combat Stats
-- **Strife Specibus:** Hammerkind
-- **Equipped Weapon:** Claw Hammer
-- **Attack Power:** 2
-- **Defense:** 1
-- **Speed:** 3
-
-## Relationships
-- **Sprite:** Unprototyped Kernel
-- **Coplayers:** None yet
-
-## Last Updated
-{datetime.datetime.now()}
-""")
-
-        self.write_file(f"characters/{p_file}_inventory.md", f"""# {player_name} - Inventory
+            # Inventory
+            inv_template = string.Template(self.read_template("templates/inventory.md") or "")
+            if inv_template.template.strip():
+                self.write_file(f"characters/{p_file}_inventory.md",
+                                inv_template.safe_substitute(mapping))
+            else:
+                self.write_file(f"characters/{p_file}_inventory.md", f"""# {player.name} - Inventory
 
 ## Sylladex
 - **Fetch Modus:** Stack
-- **Capacity:** 1/5 items
+- **Capacity:** 0/5 items
 
 ## Strife Deck
-- **Equipped:** Claw Hammer (Hammerkind)
+- **Equipped:** {player.current_weapon} ({player.strife_specibus})
 
 ## Captchalogue Cards
 - None
@@ -120,45 +171,35 @@ class StateManager:
 {datetime.datetime.now()}
 """)
 
-        # Locations (LOWAS)
-        self.write_file("lands/lowas_state.md", f"""# Land of Wind and Shade (LOWAS) - Current State
+            # Land state
+            land_template = string.Template(self.read_template("templates/land_state.md") or "")
+            if land_template.template.strip():
+                self.write_file(f"lands/{player.land}_state.md",
+                                land_template.safe_substitute(mapping))
+            else:
+                self.write_file(f"lands/{player.land}_state.md", f"""# {player.land} - Current State
 
 ## Overview
-- **Owner:** {player_name}
-- **Denizen:** Typheus
+- **Owner:** {player.name}
+- **Denizen:** {player.denizen}
 
 ## Physical Environment
-- **Biome:** Oil Ocean / Piping
-- **Dominant Colors:** Blue, Cyan, Black
-- **Atmosphere:** Windy, dark, glowing oil
+- **Biome:** Unknown
+- **Atmosphere:** Mysterious
 
 ## The Problem
-**Central Crisis:** The fireflies are trapped in the oil, and the land is dark.
+**Central Crisis:** Unknown — yet to be discovered.
 
 ## Locations
-### Player's House
-- **Status:** Explored
-- **Notes:** Transported to the land.
-
-### Pipe Crossroads
-- **Status:** Unexplored
+### {player.name}'s Entry Point
+- **Status:** Just arrived
 
 ## Last Updated
 {datetime.datetime.now()}
 """)
 
         # Timeline
-        self.write_file("session/timeline.md", f"""# Session Timeline
-## Current Session Day: 1
-
-## Recent Events
-### Day 1, Entry 1 - {datetime.datetime.now()}
-**Player:** {player_name}
-**Event:** Session started. {player_name} entered the Medium.
-**Result:** Land of Wind and Shade created.
-
-## Last Updated
-{datetime.datetime.now()}
-""")
-
-        print(f"Game initialized for {player_name}!")
+        self.write_file("session/timeline.md", session_timeline)
+        self.write_file("session/session_overview.md",
+                        session_overview + f"## Last Updated\n{datetime.datetime.now()}")
+        print(f"Game initialized for {', '.join(player.name for player in players)}!")

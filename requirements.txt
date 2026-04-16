@@ -1,2 +1,9 @@
 python-dotenv
 google-genai
+fastapi
+uvicorn[standard]
+websockets
+python-multipart
+
+# Required for OpenRouter fallback (OpenAI-compatible client)
+openai
